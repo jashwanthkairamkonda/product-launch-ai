@@ -126,7 +126,7 @@ serve(async (req) => {
       );
     }
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+if (!OPENAI_API_KEY) return new Response(JSON.stringify({error: ...}), { status: 500, headers: ... }).
     
 
     const stream = new ReadableStream({
