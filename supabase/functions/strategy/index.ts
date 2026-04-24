@@ -240,7 +240,12 @@ if (!OPENAI_API_KEY) return new Response(JSON.stringify({error: ...}), { status:
     });
 
     return new Response(stream, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+     headers: {
+  ...corsHeaders,
+  "Content-Type": "text/event-stream",
+  "Cache-Control": "no-cache, no-transform",
+  "Connection": "keep-alive",
+},
     });
   } catch (e) {
     console.error("strategy error", e);
