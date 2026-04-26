@@ -1,63 +1,80 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { HINDSIGHT_LAUNCHES } from "./hindsight.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// ---------- CORS ----------
 
-// ---------- Hindsight dataset (curated seed) ----------
-const HINDSIGHT_LAUNCHES = `
-HINDSIGHT DATABASE — 50 past launches studied (anonymized, condensed).
+const CORS_ALLOW_HEADERS =
+  "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
-PRICING PATTERNS (SaaS):
-- $9/mo tier: avg 28% trial→paid conversion (28 launches)
-- $15/mo tier: avg 12% conversion (14 launches)
-- $29/mo tier: avg 7% conversion, but 3.4x LTV (8 launches)
-- Sweet spot for solo prosumer: $7–12/mo. Above $19, churn doubles in month 2.
+// Comma-separated list of allowed origins, e.g.:
+//   ALLOWED_ORIGINS=https://yourapp.com,https://www.yourapp.com
+// When unset, only localhost origins are allowed (development fallback).
+const ALLOWED_ORIGINS: string[] = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-POSITIONING PATTERNS:
-- Feature-led copy ("manage X", "track Y"): avg 5% landing CTR
-- Outcome-led copy ("get paid faster", "ship 2x sooner"): avg 23% CTR
-- Identity-led copy ("for solo founders", "built for designers"): avg 19% CTR
-- Worst: generic "all-in-one platform" (1.8% CTR, 39 launches)
+const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-CHANNEL PATTERNS:
-- Product Hunt: 72% of B2B SaaS got initial traction. Best Tue–Thu launches.
-- Reddit niche subs (r/freelance, r/indiehackers): 4x ROI vs broad subs
-- Reddit r/entrepreneur: 3% conversion, mostly noise
-- LinkedIn organic: strong for B2B/prosumer (24% audience overlap typical)
-- Facebook ads for SaaS: 14 launches lost avg $50K+, <2% ROI. AVOID for SaaS <$50/mo.
-- Twitter/X build-in-public: works if founder posts daily; cold otherwise.
-- SEO: 6–9 month payoff, but 4 of top 10 launches we studied got 60%+ traffic from SEO.
-- Cold email: 2.1% reply rate B2B; works for ACV >$300/mo.
+function resolveOrigin(origin: string | null): string {
+  if (!origin) return "null";
+  if (ALLOWED_ORIGINS.length > 0) {
+    return ALLOWED_ORIGINS.includes(origin) ? origin : "null";
+  }
+  // No allowlist configured — permit localhost for development only.
+  return LOCAL_ORIGIN_RE.test(origin) ? origin : "null";
+}
 
-AUDIENCE PATTERNS:
-- "All [profession]" targeting: avg 47 trial signups month 1
-- Specific niche ("solo freelance designers earning $50–100K"): avg 312 signups month 1
-- Pre-launch email list >500: 8x more likely to hit $1K MRR in month 1
-- No pre-launch list: 82% never reached $1K MRR
+function corsHeaders(origin: string | null): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": resolveOrigin(origin),
+    "Access-Control-Allow-Headers": CORS_ALLOW_HEADERS,
+    "Vary": "Origin",
+  };
+}
 
-FAILURE PATTERNS (82% of failed launches shared 3+ of these):
-- No email list before launch
-- Priced too high initially (>$19 for prosumer)
-- Targeted too broadly ("all freelancers", "any business")
-- Launched on Friday/weekend
-- No clear ICP defined
-- Built features for 6+ months before talking to users
-- Founder-market fit absent
+// ---------- Rate limiting (token bucket, in-memory) ----------
 
-SUCCESS METRICS (median for "made it" launches):
-- Month 1: 100 paying users, $1K MRR
-- Month 3: 400 paying users, $4K MRR
-- <50 signups in month 1 = pivot signal (per 31 case studies)
+const RATE_LIMIT_REQUESTS = Number(Deno.env.get("RATE_LIMIT_REQUESTS") ?? "10");
+const RATE_LIMIT_WINDOW_MS = Number(Deno.env.get("RATE_LIMIT_WINDOW_MS") ?? "60000");
 
-CATEGORY-SPECIFIC NOTES:
-- Invoicing/finance tools: trust > features. Stripe/Plaid logos add 18% conversion.
-- Dev tools: GitHub README quality predicts adoption better than landing page.
-- Design tools: must have free tier; paid-only saw 92% bounce.
-- AI tools: novelty wears off in 6 weeks; retention drives valuation.
-`.trim();
+interface Bucket {
+  tokens: number;
+  lastRefill: number;
+}
+
+const buckets = new Map<string, Bucket>();
+
+function getClientId(req: Request): string {
+  // Best-effort client identifier from standard proxy headers.
+  // Requests with no identifiable IP header share a single "unknown" bucket,
+  // which is an acceptable trade-off for edge deployments where Supabase
+  // infrastructure always injects IP headers for real traffic.
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+function checkRateLimit(clientId: string): boolean {
+  const now = Date.now();
+  let bucket = buckets.get(clientId);
+  if (!bucket) {
+    buckets.set(clientId, { tokens: RATE_LIMIT_REQUESTS - 1, lastRefill: now });
+    return true;
+  }
+  const elapsed = now - bucket.lastRefill;
+  const windows = Math.floor(elapsed / RATE_LIMIT_WINDOW_MS);
+  if (windows > 0) {
+    bucket.tokens = Math.min(RATE_LIMIT_REQUESTS, bucket.tokens + windows * RATE_LIMIT_REQUESTS);
+    // Advance lastRefill by exactly the consumed windows to preserve fractional credit.
+    bucket.lastRefill += windows * RATE_LIMIT_WINDOW_MS;
+  }
+  if (bucket.tokens <= 0) return false;
+  bucket.tokens -= 1;
+  return true;
+}
 
 const AGENTS = [
   {
@@ -115,19 +132,36 @@ function sse(event: string, data: unknown) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const origin = req.headers.get("origin");
+  const cors = corsHeaders(origin);
+
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+
+  // Rate limiting
+  const clientId = getClientId(req);
+  if (!checkRateLimit(clientId)) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests. Please wait a moment and try again." }),
+      { status: 429, headers: { ...cors, "Content-Type": "application/json", "Retry-After": "60" } },
+    );
+  }
 
   try {
     const { idea } = await req.json();
     if (!idea || typeof idea !== "string" || idea.trim().length < 10) {
       return new Response(
         JSON.stringify({ error: "Please describe your product idea (at least 10 characters)." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
       );
     }
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-if (!OPENAI_API_KEY) return new Response(JSON.stringify({error: ...}), { status: 500, headers: ... }).
-    
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "OPENAI_API_KEY is not configured." }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -240,18 +274,18 @@ if (!OPENAI_API_KEY) return new Response(JSON.stringify({error: ...}), { status:
     });
 
     return new Response(stream, {
-     headers: {
-  ...corsHeaders,
-  "Content-Type": "text/event-stream",
-  "Cache-Control": "no-cache, no-transform",
-  "Connection": "keep-alive",
-},
+      headers: {
+        ...cors,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+      },
     });
   } catch (e) {
     console.error("strategy error", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } },
     );
   }
 });
