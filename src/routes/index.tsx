@@ -5,6 +5,8 @@ import { IdeaInput } from "@/components/idea-input";
 import { AgentCard } from "@/components/agent-card";
 import { useStrategyStream } from "@/hooks/use-strategy-stream";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { OutcomeForm } from "@/components/outcome-form";
+
 
 export const Route = createFileRoute("/")({
   component: Index,
