@@ -144,8 +144,15 @@ function Index() {
               Drop an idea above to see the agents work.
             </p>
           )}
+
+          {hasRun && !isStreaming && !error && (
+            <div className="mt-16">
+              <OutcomeForm seedIdea={lastIdea} />
+            </div>
+          )}
         </div>
       </section>
+
 
       {/* Hindsight callout */}
       <section id="hindsight" className="mx-auto max-w-5xl px-6 py-20 lg:px-12 lg:py-28">
