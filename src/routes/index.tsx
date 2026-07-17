@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { agents, isStreaming, error, hasRun, run } = useStrategyStream();
+  const { agents, isStreaming, error, hasRun, lastIdea, liveCount, run } = useStrategyStream();
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
