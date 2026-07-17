@@ -14,6 +14,8 @@ export function useStrategyStream() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasRun, setHasRun] = useState(false);
+  const [lastIdea, setLastIdea] = useState<string>("");
+  const [liveCount, setLiveCount] = useState<number>(0);
 
   const reset = useCallback(() => {
     setAgents(initialAgents());
@@ -26,6 +28,8 @@ export function useStrategyStream() {
     setError(null);
     setIsStreaming(true);
     setHasRun(true);
+    setLastIdea(idea);
+
 
     try {
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/strategy`, {
