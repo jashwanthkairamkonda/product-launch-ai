@@ -75,7 +75,9 @@ export function useStrategyStream() {
           if (!json) continue;
           try {
             const evt = JSON.parse(json);
-            if (evt.event === "agent_start") {
+            if (evt.event === "hindsight") {
+              if (typeof evt.liveCount === "number") setLiveCount(evt.liveCount);
+            } else if (evt.event === "agent_start") {
               setAgents((prev) =>
                 prev.map((a) => (a.id === evt.agentId ? { ...a, status: "running" } : a)),
               );
@@ -97,6 +99,7 @@ export function useStrategyStream() {
               done = true;
               break;
             }
+
           } catch {
             buffer = line + "\n" + buffer;
             break;
