@@ -73,8 +73,9 @@ function Index() {
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                Hindsight from 50 past launches
+                Hindsight from 50 curated{liveCount > 0 ? ` + ${liveCount} live` : ""} launches
               </span>
+
             </div>
             <h1 className="font-serif text-5xl leading-[1.05] text-brand sm:text-6xl lg:text-7xl">
               Your AI co-pilot for flawless product launches.
