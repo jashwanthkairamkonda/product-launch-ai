@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      launches: {
+        Row: {
+          category: string | null
+          channels: string[]
+          created_at: string
+          had_prelaunch_list: boolean | null
+          id: string
+          idea: string
+          launched_day: string | null
+          month1_mrr: number | null
+          month1_paying_users: number | null
+          month1_signups: number | null
+          outcome: Database["public"]["Enums"]["launch_outcome"] | null
+          positioning_style: string | null
+          price_tier: string | null
+          status: Database["public"]["Enums"]["launch_status"]
+          submitter_email: string | null
+          target_niche: string | null
+          what_flopped: string | null
+          what_worked: string | null
+        }
+        Insert: {
+          category?: string | null
+          channels?: string[]
+          created_at?: string
+          had_prelaunch_list?: boolean | null
+          id?: string
+          idea: string
+          launched_day?: string | null
+          month1_mrr?: number | null
+          month1_paying_users?: number | null
+          month1_signups?: number | null
+          outcome?: Database["public"]["Enums"]["launch_outcome"] | null
+          positioning_style?: string | null
+          price_tier?: string | null
+          status?: Database["public"]["Enums"]["launch_status"]
+          submitter_email?: string | null
+          target_niche?: string | null
+          what_flopped?: string | null
+          what_worked?: string | null
+        }
+        Update: {
+          category?: string | null
+          channels?: string[]
+          created_at?: string
+          had_prelaunch_list?: boolean | null
+          id?: string
+          idea?: string
+          launched_day?: string | null
+          month1_mrr?: number | null
+          month1_paying_users?: number | null
+          month1_signups?: number | null
+          outcome?: Database["public"]["Enums"]["launch_outcome"] | null
+          positioning_style?: string | null
+          price_tier?: string | null
+          status?: Database["public"]["Enums"]["launch_status"]
+          submitter_email?: string | null
+          target_niche?: string | null
+          what_flopped?: string | null
+          what_worked?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +85,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      launch_outcome: "success" | "on_track" | "pivot"
+      launch_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +213,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      launch_outcome: ["success", "on_track", "pivot"],
+      launch_status: ["pending", "approved", "rejected"],
+    },
   },
 } as const

@@ -1,0 +1,12 @@
+DO $$ BEGIN CREATE TYPE public.launch_outcome AS ENUM ('success', 'on_track', 'pivot'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE public.launch_status AS ENUM ('pending', 'approved', 'rejected'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE TABLE IF NOT EXISTS public.launches (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), idea TEXT NOT NULL, category TEXT, price_tier TEXT, positioning_style TEXT, target_niche TEXT, channels TEXT[] NOT NULL DEFAULT '{}', had_prelaunch_list BOOLEAN, launched_day TEXT, month1_signups INTEGER, month1_paying_users INTEGER, month1_mrr NUMERIC, outcome public.launch_outcome, what_worked TEXT, what_flopped TEXT, submitter_email TEXT, status public.launch_status NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+GRANT SELECT, INSERT ON public.launches TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.launches TO authenticated;
+GRANT ALL ON public.launches TO service_role;
+ALTER TABLE public.launches ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Approved launches are public" ON public.launches;
+CREATE POLICY "Approved launches are public" ON public.launches FOR SELECT USING (status = 'approved');
+DROP POLICY IF EXISTS "Anyone can submit a launch as pending" ON public.launches;
+CREATE POLICY "Anyone can submit a launch as pending" ON public.launches FOR INSERT WITH CHECK (status = 'pending');
+CREATE INDEX IF NOT EXISTS idx_launches_status_created ON public.launches (status, created_at DESC);

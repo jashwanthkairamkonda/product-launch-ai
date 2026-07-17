@@ -14,6 +14,8 @@ export function useStrategyStream() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasRun, setHasRun] = useState(false);
+  const [lastIdea, setLastIdea] = useState<string>("");
+  const [liveCount, setLiveCount] = useState<number>(0);
 
   const reset = useCallback(() => {
     setAgents(initialAgents());
@@ -26,6 +28,8 @@ export function useStrategyStream() {
     setError(null);
     setIsStreaming(true);
     setHasRun(true);
+    setLastIdea(idea);
+
 
     try {
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/strategy`, {
@@ -71,7 +75,9 @@ export function useStrategyStream() {
           if (!json) continue;
           try {
             const evt = JSON.parse(json);
-            if (evt.event === "agent_start") {
+            if (evt.event === "hindsight") {
+              if (typeof evt.liveCount === "number") setLiveCount(evt.liveCount);
+            } else if (evt.event === "agent_start") {
               setAgents((prev) =>
                 prev.map((a) => (a.id === evt.agentId ? { ...a, status: "running" } : a)),
               );
@@ -93,6 +99,7 @@ export function useStrategyStream() {
               done = true;
               break;
             }
+
           } catch {
             buffer = line + "\n" + buffer;
             break;
@@ -106,5 +113,6 @@ export function useStrategyStream() {
     }
   }, []);
 
-  return { agents, isStreaming, error, hasRun, run, reset };
+  return { agents, isStreaming, error, hasRun, lastIdea, liveCount, run, reset };
 }
+

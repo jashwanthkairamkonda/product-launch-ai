@@ -5,6 +5,8 @@ import { IdeaInput } from "@/components/idea-input";
 import { AgentCard } from "@/components/agent-card";
 import { useStrategyStream } from "@/hooks/use-strategy-stream";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { OutcomeForm } from "@/components/outcome-form";
+
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { agents, isStreaming, error, hasRun, run } = useStrategyStream();
+  const { agents, isStreaming, error, hasRun, lastIdea, liveCount, run } = useStrategyStream();
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,8 +73,9 @@ function Index() {
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                Hindsight from 50 past launches
+                Hindsight from 50 curated{liveCount > 0 ? ` + ${liveCount} live` : ""} launches
               </span>
+
             </div>
             <h1 className="font-serif text-5xl leading-[1.05] text-brand sm:text-6xl lg:text-7xl">
               Your AI co-pilot for flawless product launches.
@@ -141,8 +144,15 @@ function Index() {
               Drop an idea above to see the agents work.
             </p>
           )}
+
+          {hasRun && !isStreaming && !error && (
+            <div className="mt-16">
+              <OutcomeForm seedIdea={lastIdea} />
+            </div>
+          )}
         </div>
       </section>
+
 
       {/* Hindsight callout */}
       <section id="hindsight" className="mx-auto max-w-5xl px-6 py-20 lg:px-12 lg:py-28">
