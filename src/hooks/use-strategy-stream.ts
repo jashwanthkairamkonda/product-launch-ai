@@ -113,5 +113,6 @@ export function useStrategyStream() {
     }
   }, []);
 
-  return { agents, isStreaming, error, hasRun, run, reset };
+  return { agents, isStreaming, error, hasRun, lastIdea, liveCount, run, reset };
 }
+
