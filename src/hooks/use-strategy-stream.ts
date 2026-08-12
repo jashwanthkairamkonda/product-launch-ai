@@ -87,6 +87,12 @@ export function useStrategyStream() {
             const evt = JSON.parse(json);
             if (evt.event === "hindsight") {
               if (typeof evt.liveCount === "number") setLiveCount(evt.liveCount);
+            } else if (evt.event === "research_start") {
+              setIsResearching(true);
+            } else if (evt.event === "research") {
+              setIsResearching(false);
+              if (Array.isArray(evt.sources)) setSources(evt.sources as ResearchSource[]);
+
             } else if (evt.event === "agent_start") {
               setAgents((prev) =>
                 prev.map((a) => (a.id === evt.agentId ? { ...a, status: "running" } : a)),
