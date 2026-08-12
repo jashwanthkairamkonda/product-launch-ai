@@ -282,6 +282,10 @@ serve(async (req) => {
 
         send("hindsight", { liveCount, seedCount: 50 });
 
+        send("research_start", {});
+        const { block: webBlock, sources } = await fetchWebResearch(idea);
+        send("research", { sources });
+
         const previousOutputs: Record<string, string> = {};
 
         try {
@@ -292,7 +296,9 @@ serve(async (req) => {
               `PRODUCT IDEA:\n${idea}`,
               `CURATED HINDSIGHT DATA:\n${HINDSIGHT_LAUNCHES}`,
             ];
+            if (webBlock) contextBlocks.push(webBlock);
             if (liveBlock) contextBlocks.push(liveBlock);
+
             if (Object.keys(previousOutputs).length > 0) {
               contextBlocks.push(
                 `PREVIOUS AGENT FINDINGS:\n${Object.entries(previousOutputs)
