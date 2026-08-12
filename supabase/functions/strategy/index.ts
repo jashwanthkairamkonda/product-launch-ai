@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { fetchWebResearch } from "./research.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -280,6 +282,10 @@ serve(async (req) => {
 
         send("hindsight", { liveCount, seedCount: 50 });
 
+        send("research_start", {});
+        const { block: webBlock, sources } = await fetchWebResearch(idea);
+        send("research", { sources });
+
         const previousOutputs: Record<string, string> = {};
 
         try {
@@ -290,7 +296,9 @@ serve(async (req) => {
               `PRODUCT IDEA:\n${idea}`,
               `CURATED HINDSIGHT DATA:\n${HINDSIGHT_LAUNCHES}`,
             ];
+            if (webBlock) contextBlocks.push(webBlock);
             if (liveBlock) contextBlocks.push(liveBlock);
+
             if (Object.keys(previousOutputs).length > 0) {
               contextBlocks.push(
                 `PREVIOUS AGENT FINDINGS:\n${Object.entries(previousOutputs)
@@ -309,7 +317,13 @@ serve(async (req) => {
                 model: "google/gemini-3-flash-preview",
                 stream: true,
                 messages: [
-                  { role: "system", content: agent.system },
+                  {
+                    role: "system",
+                    content: webBlock
+                      ? `${agent.system}\n\nYou also have LIVE WEB RESEARCH fetched moments ago. Prefer it over your training data for competitor names, current prices, market size and recent trends. Cite the source name inline, e.g. "(per Source)". Never invent a number that is not in the research or hindsight data — if a figure is unknown, say so.`
+                      : agent.system,
+                  },
+
                   { role: "user", content: contextBlocks.join("\n\n") },
                 ],
               }),

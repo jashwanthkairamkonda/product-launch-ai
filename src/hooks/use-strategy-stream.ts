@@ -9,6 +9,11 @@ function initialAgents(): AgentState[] {
   return AGENT_DEFINITIONS.map((a) => ({ ...a, output: "", status: "pending" }));
 }
 
+export interface ResearchSource {
+  title: string;
+  url: string;
+}
+
 export function useStrategyStream() {
   const [agents, setAgents] = useState<AgentState[]>(initialAgents);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -16,11 +21,14 @@ export function useStrategyStream() {
   const [hasRun, setHasRun] = useState(false);
   const [lastIdea, setLastIdea] = useState<string>("");
   const [liveCount, setLiveCount] = useState<number>(0);
+  const [sources, setSources] = useState<ResearchSource[]>([]);
+  const [isResearching, setIsResearching] = useState(false);
 
   const reset = useCallback(() => {
     setAgents(initialAgents());
     setError(null);
     setHasRun(false);
+    setSources([]);
   }, []);
 
   const run = useCallback(async (idea: string) => {
@@ -29,6 +37,8 @@ export function useStrategyStream() {
     setIsStreaming(true);
     setHasRun(true);
     setLastIdea(idea);
+    setSources([]);
+
 
 
     try {
@@ -77,6 +87,12 @@ export function useStrategyStream() {
             const evt = JSON.parse(json);
             if (evt.event === "hindsight") {
               if (typeof evt.liveCount === "number") setLiveCount(evt.liveCount);
+            } else if (evt.event === "research_start") {
+              setIsResearching(true);
+            } else if (evt.event === "research") {
+              setIsResearching(false);
+              if (Array.isArray(evt.sources)) setSources(evt.sources as ResearchSource[]);
+
             } else if (evt.event === "agent_start") {
               setAgents((prev) =>
                 prev.map((a) => (a.id === evt.agentId ? { ...a, status: "running" } : a)),
@@ -109,10 +125,23 @@ export function useStrategyStream() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Network error");
     } finally {
+      setIsResearching(false);
       setIsStreaming(false);
     }
   }, []);
 
-  return { agents, isStreaming, error, hasRun, lastIdea, liveCount, run, reset };
+  return {
+    agents,
+    isStreaming,
+    isResearching,
+    error,
+    hasRun,
+    lastIdea,
+    liveCount,
+    sources,
+    run,
+    reset,
+  };
 }
+
 
