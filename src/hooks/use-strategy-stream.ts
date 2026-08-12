@@ -9,6 +9,11 @@ function initialAgents(): AgentState[] {
   return AGENT_DEFINITIONS.map((a) => ({ ...a, output: "", status: "pending" }));
 }
 
+export interface ResearchSource {
+  title: string;
+  url: string;
+}
+
 export function useStrategyStream() {
   const [agents, setAgents] = useState<AgentState[]>(initialAgents);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -16,11 +21,14 @@ export function useStrategyStream() {
   const [hasRun, setHasRun] = useState(false);
   const [lastIdea, setLastIdea] = useState<string>("");
   const [liveCount, setLiveCount] = useState<number>(0);
+  const [sources, setSources] = useState<ResearchSource[]>([]);
+  const [isResearching, setIsResearching] = useState(false);
 
   const reset = useCallback(() => {
     setAgents(initialAgents());
     setError(null);
     setHasRun(false);
+    setSources([]);
   }, []);
 
   const run = useCallback(async (idea: string) => {
@@ -29,6 +37,8 @@ export function useStrategyStream() {
     setIsStreaming(true);
     setHasRun(true);
     setLastIdea(idea);
+    setSources([]);
+
 
 
     try {
