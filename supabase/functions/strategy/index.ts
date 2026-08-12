@@ -317,7 +317,13 @@ serve(async (req) => {
                 model: "google/gemini-3-flash-preview",
                 stream: true,
                 messages: [
-                  { role: "system", content: agent.system },
+                  {
+                    role: "system",
+                    content: webBlock
+                      ? `${agent.system}\n\nYou also have LIVE WEB RESEARCH fetched moments ago. Prefer it over your training data for competitor names, current prices, market size and recent trends. Cite the source name inline, e.g. "(per Source)". Never invent a number that is not in the research or hindsight data — if a figure is unknown, say so.`
+                      : agent.system,
+                  },
+
                   { role: "user", content: contextBlocks.join("\n\n") },
                 ],
               }),
