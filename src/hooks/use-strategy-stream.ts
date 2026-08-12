@@ -125,10 +125,23 @@ export function useStrategyStream() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Network error");
     } finally {
+      setIsResearching(false);
       setIsStreaming(false);
     }
   }, []);
 
-  return { agents, isStreaming, error, hasRun, lastIdea, liveCount, run, reset };
+  return {
+    agents,
+    isStreaming,
+    isResearching,
+    error,
+    hasRun,
+    lastIdea,
+    liveCount,
+    sources,
+    run,
+    reset,
+  };
 }
+
 
